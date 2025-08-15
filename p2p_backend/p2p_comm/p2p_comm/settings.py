@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
 
     "drf_spectacular",
+    "corsheaders",
 
     # your apps
     "users",  # make sure this app exists
@@ -40,6 +41,15 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # Corsheaders middleware
+    "corsheaders.middleware.CorsMiddleware",
+]
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
 ]
 
 ROOT_URLCONF = "p2p_comm.urls"
@@ -91,9 +101,26 @@ STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
 # -----------------------
 # REST Framework + JWT
 # -----------------------
+SPECTACULAR_SETTINGS = {
+    "TITLE": "P2PComm API",
+    "DESCRIPTION": "P2P communication backend API",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SECURITY": [{"Bearer": []}],
+    "COMPONENTS": {
+        "securitySchemes": {
+            "Bearer": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}
+        }
+    },
+}
+
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -104,6 +131,9 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
+REST_FRAMEWORK.update({
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+})
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=2),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
@@ -111,35 +141,19 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": False,
     # add more config here if needed (algorithms, signing key, etc.)
 }
-SPECTACULAR_SETTINGS = {
-    "TITLE": "P2PComm API",
-    "DESCRIPTION": "API for P2P communications (users, auth, profiles, etc.)",
-    "VERSION": "1.0.0",
-    "SERVE_INCLUDE_SCHEMA": False,
-    # Add JWT auth to schema so Swagger UI shows Authorization button
-    "SECURITY": [{"Bearer": []}],
-    "COMPONENT_SPLIT_REQUEST": True,
-    "APPEND_COMPONENTS": {
-        # define reusable components if needed
-    },
-}
-SPECTACULAR_SETTINGS["COMPONENTS"] = {
-    "securitySchemes": {
-        "Bearer": {
-            "type": "http",
-            "scheme": "bearer",
-            "bearerFormat": "JWT",
-        }
-    }
-}
 
 
 # -----------------------
 # Email (development)
 # -----------------------
 # Console backend prints emails to the runserver output for dev/testing.
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-DEFAULT_FROM_EMAIL = "noreply@iiitbh.ac.in"
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = "di45soham@gmail.com"
+EMAIL_HOST_PASSWORD = "xxiyakjjsvpfomzk"  # 16-char app password
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 # -----------------------
 # CORS / CSRF notes (dev)
