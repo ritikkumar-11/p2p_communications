@@ -13,7 +13,7 @@ urlpatterns = [
     path("auth/login/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("profile/me/", MeProfileView.as_view(), name="profile-me"),
-    path("profile/me/", MeProfileView.as_view(), name="profile-me"),           # GET, PATCH (auth required)
+    # path("profile/me/", MeProfileView.as_view(), name="profile-me"),           # GET, PATCH (auth required)
     path("profile/<str:username>/", PublicProfileView.as_view(), name="profile-public"),  # GET public
     path("profile/<str:username>/avatar/", profile_avatar_view, name="profile-avatar"),
 ]

@@ -50,7 +50,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             "batch", "is_current_student",
             "headline", "about", "location",
             "experiences", "links",
-            "avatar", "updated_at",
+            "avatar", "avatar_base64", "avatar_url", "updated_at",
         ]
         read_only_fields = ["updated_at"]
     def get_avatar_url(self, obj):
