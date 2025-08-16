@@ -11,6 +11,7 @@ class CustomUser(AbstractUser):
     secondary_email = models.EmailField(blank=True, null=True)
     batch = models.CharField(max_length=10, blank=True)  # e.g., "2022"
     is_current_student = models.BooleanField(default=True)  # True=current, False=alumni
+    full_name = models.CharField(max_length=255, blank=True, db_index=True)
 
     USERNAME_FIELD = "username"
     REQUIRED_FIELDS = ["email"]

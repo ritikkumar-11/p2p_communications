@@ -7,17 +7,19 @@ from rest_framework.decorators import action
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.mail import send_mail
 
-from .serializers import RegistrationSerializer, ProfileSerializer
+from .serializers import RegistrationSerializer, ProfileSerializer, PublicProfileSerializer
 from .models import Profile
 from .utils import make_username_from_email, make_random_password
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import status
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
-from rest_framework.generics import RetrieveAPIView
+from rest_framework.generics import RetrieveAPIView, ListAPIView
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse, OpenApiExample
 from django.http import HttpResponse, Http404
+from rest_framework import status
+from django.db.models import Q
 
 User = get_user_model()
 
@@ -168,43 +170,63 @@ class MeProfileView(APIView):
 
 
 class PublicProfileView(RetrieveAPIView):
-    """
-    GET /api/profile/<username>/
-    Public read-only view for profiles (no sensitive fields like emails if you want)
-    """
     permission_classes = [AllowAny]
-    serializer_class = ProfileSerializer
+    serializer_class = PublicProfileSerializer   # use public serializer here
     lookup_field = "username"
 
-    @extend_schema(
-        summary="Get public profile by username",
-        description="Public profile data (omits private fields).",
-        responses={200: ProfileSerializer},
-        parameters=[OpenApiParameter(name="username", description="username", required=True, type=str)],
-        tags=["Profile"]
-    )
-    def get_object_or_404(self):
+    def get_object(self):
         username = self.kwargs.get("username")
         user = get_object_or_404(User, username=username)
         profile, _ = Profile.objects.get_or_create(user=user)
-        # Optionally redact fields for public view (e.g., hide secondary_email)
         return profile
-    
-class PublicProfileView(RetrieveAPIView):
-    permission_classes = [AllowAny]
-    serializer_class = ProfileSerializer
-    lookup_field = "username"
 
     @extend_schema(
         summary="Get public profile by username",
-        description="Public profile data (omits private fields).",
-        responses={200: ProfileSerializer},
-        parameters=[OpenApiParameter(name="username", description="username", required=True, type=str)],
-        tags=["Profile"]
+        responses={200: PublicProfileSerializer, 404: OpenApiResponse(description="Not found")},
+        tags=["Profile"],
     )
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
 
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
+        ctx["request"] = self.request
+        return ctx
+
+
+class ProfileSearchView(ListAPIView):
+    """
+    GET /api/profile/search/?q=<name or username>
+    Returns public profiles matching full_name (primary) or username (secondary).
+    """
+    permission_classes = [AllowAny]
+    serializer_class = PublicProfileSerializer
+
+    @extend_schema(
+        summary="Search public profiles by full name or username",
+        parameters=[
+            OpenApiParameter(name="q", description="Full name or username (substring, case-insensitive)", required=True, type=str),
+            OpenApiParameter(name="limit", description="Max results (default 20, max 50)", required=False, type=int),
+        ],
+        responses={200: PublicProfileSerializer(many=True)},
+        tags=["Profile"],
+    )
+    def get_queryset(self):
+        q = self.request.query_params.get("q", "").strip()
+        limit = min(max(int(self.request.query_params.get("limit", 20)), 1), 50)
+        if not q:
+            return Profile.objects.none()
+
+        # Join across user for name/username
+        qs = Profile.objects.select_related("user").filter(
+            Q(user__full_name__icontains=q) | Q(user__username__icontains=q)
+        ).order_by("user__full_name", "user__username")[:limit]
+        return qs
+
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
+        ctx["request"] = self.request
+        return ctx
 
 # Serve avatar binary from DB. Public or protected depending on your policy (here we keep public)
 @extend_schema(

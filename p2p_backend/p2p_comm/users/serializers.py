@@ -27,6 +27,22 @@ class RegistrationSerializer(serializers.Serializer):
 MAX_AVATAR_SIZE = 2 * 1024 * 1024  # 2 MB
 ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"]
 
+class PublicProfileSerializer(serializers.ModelSerializer):
+    # minimal public shape (no emails)
+    username = serializers.CharField(source="user.username", read_only=True)
+    full_name = serializers.CharField(source="user.full_name", read_only=True)
+    avatar_url = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = Profile
+        fields = ["username", "full_name", "headline", "about", "location", "experiences", "links", "avatar_url"]
+
+    def get_avatar_url(self, obj):
+        request = self.context.get("request")
+        if obj and obj.has_avatar():
+            return request.build_absolute_uri(f"/api/profile/{obj.user.username}/avatar/")
+        return None
+
 class ProfileSerializer(serializers.ModelSerializer):
     # expose some fields from the user model and allow editing them
     username = serializers.CharField(source="user.username", required=False)
